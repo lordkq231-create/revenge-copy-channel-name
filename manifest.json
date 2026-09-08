@@ -1,14 +1,7 @@
 {
-  "name": "Copy Channel Name",
-  "description": "Copy channel and category names",
-  "authors": [
-    {
-      "name": "Lvllvayu",
-      "id": "0"
-    }
-  ],
-  "main": "src/index.ts",
-  "vendetta": {
-    "icon": "ic_copy"
-  }
+  "name": "CopyName",
+  "description": "Adds a Copy Name option to channel/category context menus",
+  "authors": [{ "name": "you", "id": "0" }],
+  "main": "index.js",
+  "vendetta": { "minVersion": "1.6.2" }
 }
