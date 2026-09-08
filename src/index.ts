@@ -1,29 +1,50 @@
-import { clipboard, logger, metro, patcher } from "@vendetta";
+import { clipboard } from "@vendetta/clipboard";
+import { findByProps } from "@vendetta/metro";
+import { after } from "@vendetta/patcher";
+import { showToast } from "@vendetta/ui/toasts";
 
 const patches: (() => void)[] = [];
 
 export default {
     onLoad() {
-        logger.log("[Copy Channel Name] loaded");
+        try {
+            const actionSheet = findByProps("openLazy", "open");
 
-        const modules = metro.findAll(
-            (m: any) =>
-                m &&
-                typeof m === "object" &&
-                typeof m.default === "function" &&
-                String(m.default).includes("Channel")
-        );
+            if (!actionSheet?.openLazy) {
+                showToast("Copy Channel Name: ActionSheet не найден");
+                return;
+            }
 
-        for (const module of modules) {
-            try {
-                const unpatch = patcher.after(
-                    module,
-                    "default",
-                    (_args: any[], result: any) => result
-                );
+            patches.push(
+                after("openLazy", actionSheet, (args: any[], result: any) => {
+                    try {
+                        const props = args?.[0];
 
-                patches.push(unpatch);
-            } catch {}
+                        if (!props) return result;
+
+                        const channel =
+                            props.channel ??
+                            props.guildChannel ??
+                            props;
+
+                        const name = channel?.name;
+
+                        if (!name) return result;
+
+                        const original = result;
+
+                        if (!original || typeof original !== "object") {
+                            return result;
+                        }
+
+                        return original;
+                    } catch {
+                        return result;
+                    }
+                })
+            );
+        } catch (e) {
+            console.log("[Copy Channel Name]", e);
         }
     },
 
