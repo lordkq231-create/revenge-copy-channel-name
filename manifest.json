@@ -1,0 +1,14 @@
+{
+  "name": "Copy Channel Name",
+  "description": "Copy channel and category names",
+  "authors": [
+    {
+      "name": "Lvllvayu",
+      "id": "0"
+    }
+  ],
+  "main": "src/index.ts",
+  "vendetta": {
+    "icon": "ic_copy"
+  }
+}
