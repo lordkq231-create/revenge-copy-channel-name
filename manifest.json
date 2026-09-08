@@ -2,6 +2,6 @@
   "name": "CopyName",
   "description": "Adds a Copy Name option to channel/category context menus",
   "authors": [{ "name": "you", "id": "0" }],
-  "main": "index.js",
+  "main": "src/index.js"
   "vendetta": { "minVersion": "1.6.2" }
 }
