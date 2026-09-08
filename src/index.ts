@@ -1,60 +1,93 @@
-import { clipboard } from "@vendetta/clipboard";
 import { findByProps } from "@vendetta/metro";
 import { after } from "@vendetta/patcher";
+import { findInReactTree } from "@vendetta/utils";
 import { showToast } from "@vendetta/ui/toasts";
+import { getAssetIDByName } from "@vendetta/ui/assets";
 
-const patches: (() => void)[] = [];
+const Clipboard = findByProps("setString", "getString");
+const ActionSheetRowModule = findByProps("ActionSheetRow");
+const ActionSheetRow = ActionSheetRowModule?.ActionSheetRow;
 
-export default {
-    onLoad() {
+function findChannelSheetModule() {
+    const candidates = [
+        "ChannelLongPressActionSheet",
+        "useChannelLongPressActionSheet",
+    ];
+    for (const name of candidates) {
+        const mod = findByProps(name);
+        if (mod) return { mod, key: name };
+    }
+    return null;
+}
+
+const MARKER = "revenge-copy-name-row";
+let unpatches = [];
+
+function buildRow(name) {
+    return {
+        $$typeof: Symbol.for("react.element"),
+        type: ActionSheetRow,
+        key: MARKER,
+        props: {
+            label: "📋 Copy Name",
+            onPress: () => {
+                Clipboard.setString(name);
+                showToast(
+                    `Copied: ${name}`,
+                    getAssetIDByName("toast_copy_link") ?? getAssetIDByName("copy")
+                );
+            },
+        },
+    };
+}
+
+function extractName(channelLike) {
+    if (!channelLike) return null;
+    return channelLike.name ?? null;
+}
+
+export const onLoad = () => {
+    const found = findChannelSheetModule();
+    if (!found) return;
+
+    const { mod, key } = found;
+
+    const unpatch = after(key, mod, (args, res) => {
         try {
-            const actionSheet = findByProps("openLazy", "open");
+            if (!res) return res;
 
-            if (!actionSheet?.openLazy) {
-                showToast("Copy Channel Name: ActionSheet не найден");
-                return;
-            }
+            const arg0 = args?.[0];
+            const channel = arg0?.channel ?? arg0?.props?.channel ?? arg0;
+            const name = extractName(channel);
+            if (!name) return res;
 
-            patches.push(
-                after("openLazy", actionSheet, (args: any[], result: any) => {
-                    try {
-                        const props = args?.[0];
-
-                        if (!props) return result;
-
-                        const channel =
-                            props.channel ??
-                            props.guildChannel ??
-                            props;
-
-                        const name = channel?.name;
-
-                        if (!name) return result;
-
-                        const original = result;
-
-                        if (!original || typeof original !== "object") {
-                            return result;
-                        }
-
-                        return original;
-                    } catch {
-                        return result;
-                    }
-                })
+            const rowsContainer = findInReactTree(
+                res,
+                (n) => Array.isArray(n?.props?.children) &&
+                    n.props.children.some((c) => c?.type === ActionSheetRow)
             );
+
+            if (!rowsContainer) return res;
+
+            const children = rowsContainer.props.children;
+            const alreadyAdded = children.some((c) => c?.key === MARKER);
+            if (alreadyAdded) return res;
+
+            children.push(buildRow(name));
         } catch (e) {
-            console.log("[Copy Channel Name]", e);
+            console.log("[CopyName]", e);
         }
-    },
+        return res;
+    });
 
-    onUnload() {
-        for (const unpatch of patches) {
-            try {
-                unpatch();
-            } catch {}
-        }
+    unpatches.push(unpatch);
+};
 
-        patches.length = 0;
-    },
+export const onUnload = () => {
+    for (const unpatch of unpatches) {
+        try {
+            unpatch();
+        } catch {}
+    }
+    unpatches = [];
 };
